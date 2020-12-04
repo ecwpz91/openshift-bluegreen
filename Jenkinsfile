@@ -71,20 +71,16 @@ node {
   stage('Deploy new Version') {
     echo "Deploying to ${dest}"
     
-    steps {
-        script {
-            openshift.withCluster() {
-                openshift.withProject() {
-                  def rm = openshift.selector("dc", dest).rollout()
-                  timeout(5) { 
-                    openshift.selector("dc", dest).related('pods').untilEach(1) {
-                      return (it.object().status.phase == "Running")
-                    }
-                  }
-                }
+    openshift.withCluster() {
+        openshift.withProject() {
+          def rm = openshift.selector("dc", dest).rollout()
+          timeout(5) { 
+            openshift.selector("dc", dest).related('pods').untilEach(1) {
+              return (it.object().status.phase == "Running")
             }
+          }
         }
-      }
+    }
   }
   
   stage('Switch over to new Version') {
