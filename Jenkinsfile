@@ -70,11 +70,23 @@ node {
 
   stage('Deploy new Version') {
     echo "Deploying to ${dest}"
-
-    openshiftDeploy depCfg: dest, namespace: project, verbose: 'false', waitTime: '', waitUnit: 'sec'
-    openshiftVerifyDeployment depCfg: dest, namespace: project, replicaCount: '1', verbose: 'false', verifyReplicaCount: 'true', waitTime: '', waitUnit: 'sec'
-    openshiftVerifyService namespace: project, svcName: dest, verbose: 'false'
+    
+    steps {
+        script {
+            openshift.withCluster() {
+                openshift.withProject() {
+                  def rm = openshift.selector("dc", dest).rollout()
+                  timeout(5) { 
+                    openshift.selector("dc", dest).related('pods').untilEach(1) {
+                      return (it.object().status.phase == "Running")
+                    }
+                  }
+                }
+            }
+        }
+      }
   }
+  
   stage('Switch over to new Version') {
     input "Switch Production?"
     sh 'oc patch route example -p \'{"spec":{"to":{"name":"' + dest + '"}}}\''
